@@ -1,0 +1,17 @@
+
+> frontend@0.0.0 build
+> tsc -b && vite build
+
+vite v8.0.2 building client environment for production...
+[2Ktransforming...✓ 70 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.45 kB │ gzip:  0.29 kB
+dist/assets/index-BrY4rHgr.css   20.02 kB │ gzip:  4.67 kB
+dist/assets/index-BiWbMAsc.js   244.99 kB │ gzip: 78.10 kB
+
+✓ built in 265ms
+
+thread 'main' (15409) panicked at src/db/mod.rs:11:10:
+Failed to create pool: PoolTimedOut
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace

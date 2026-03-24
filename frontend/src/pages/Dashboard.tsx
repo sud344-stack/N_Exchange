@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useMarketHook } from '../context/MarketContext';
+import TradingChart from '../components/TradingChart';
+import OrderBookComponent from '../components/OrderBook';
 
 interface PortfolioItem {
   asset: string;
@@ -83,20 +85,21 @@ export const Dashboard: React.FC = () => {
 
   if (!userId) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-zinc-950 text-white">
-        <form onSubmit={handleLogin} className="bg-zinc-900 p-8 rounded-xl shadow-2xl border border-zinc-800">
-          <h2 className="text-2xl font-bold mb-6 text-center text-blue-400">CryptoSim Terminal</h2>
+      <div className="min-h-screen flex items-center justify-center bg-zinc-950 text-white font-mono">
+        <form onSubmit={handleLogin} className="bg-zinc-900 p-8 rounded-xl shadow-2xl border border-zinc-800 w-96 max-w-full">
+          <h2 className="text-2xl font-bold mb-6 text-center text-blue-500">N_Exchange</h2>
           <div className="mb-4">
             <label className="block text-zinc-400 text-sm mb-2">Username</label>
             <input 
               type="text" 
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full bg-zinc-800 text-white border border-zinc-700 rounded px-4 py-2 focus:outline-none focus:border-blue-500"
-              placeholder="Enter to start simulating..."
+              className="w-full bg-zinc-800 text-white border border-zinc-700 rounded px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"
+              placeholder="Enter username..."
+              required
             />
           </div>
-          <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition-colors">
+          <button type="submit" className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded transition-colors shadow-lg shadow-blue-900/20">
             Start Trading
           </button>
         </form>
@@ -105,166 +108,246 @@ export const Dashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white p-6 font-mono">
-      <div className="max-w-7xl mx-auto space-y-6">
-        
-        {/* Header */}
-        <div className="flex justify-between items-center bg-zinc-900 p-4 rounded-xl border border-zinc-800 shadow-lg">
-          <h1 className="text-2xl font-bold text-blue-400 tracking-wider">CryptoSim Terminal</h1>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-              <span className="text-sm text-zinc-400">Live Binance Data</span>
-            </div>
-            <button onClick={handleLogout} className="text-sm text-red-400 hover:text-red-300 transition-colors">Logout</button>
-          </div>
+    <div className="h-screen bg-zinc-950 text-white font-sans overflow-hidden flex flex-col">
+      {/* Header */}
+      <header className="flex justify-between items-center bg-zinc-900 px-6 py-3 border-b border-zinc-800 shrink-0">
+        <div className="flex items-center gap-6">
+          <h1 className="text-xl font-bold text-blue-500 tracking-wider">N_Exchange</h1>
+          <nav className="hidden md:flex gap-4">
+            <a href="#" className="text-sm font-medium hover:text-blue-400 transition-colors">Markets</a>
+            <a href="#" className="text-sm font-medium hover:text-blue-400 transition-colors">Trade</a>
+            <a href="#" className="text-sm font-medium hover:text-blue-400 transition-colors">Derivatives</a>
+          </nav>
         </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          
-          {/* Market Data */}
-          <div className="lg:col-span-1 bg-zinc-900 rounded-xl border border-zinc-800 p-4 shadow-lg overflow-y-auto max-h-[calc(100vh-160px)]">
-            <h2 className="text-xl font-bold mb-4 text-zinc-100 border-b border-zinc-800 pb-2">Market Data</h2>
-            <div className="space-y-2">
-              {availableAssets.map((asset) => {
-                const symbol = `${asset}USDT`;
-                const price = prices[symbol];
-                return (
-                  <div key={asset} className="flex justify-between items-center p-3 hover:bg-zinc-800/50 rounded transition-colors">
-                    <div className="flex items-center gap-3">
-                      <span className="font-bold text-zinc-300">{asset}</span>
-                      <span className="text-xs text-zinc-500">USDT</span>
-                    </div>
-                    <span className={`font-mono ${price ? 'text-green-400' : 'text-zinc-500'}`}>
-                      {price ? `$${price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 6})}` : 'Loading...'}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 px-3 py-1 bg-zinc-800/50 rounded-full border border-zinc-700/50">
+            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+            <span className="text-xs text-zinc-300 font-medium">Binance WSS Live</span>
           </div>
+          <button onClick={handleLogout} className="text-sm text-zinc-400 hover:text-red-400 transition-colors font-medium">Logout</button>
+        </div>
+      </header>
 
-          {/* Trading Form */}
-          <div className="lg:col-span-1 bg-zinc-900 rounded-xl border border-zinc-800 p-6 shadow-lg">
-             <h2 className="text-xl font-bold mb-6 text-zinc-100 border-b border-zinc-800 pb-2">Trade</h2>
-             <form onSubmit={submitOrder} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-zinc-400 text-xs mb-1">Side</label>
-                    <select 
-                      value={orderSide} 
-                      onChange={(e) => setOrderSide(e.target.value)}
-                      className={`w-full bg-zinc-800 border-none rounded px-3 py-2 text-sm focus:ring-1 outline-none ${orderSide === 'BUY' ? 'text-green-400 ring-green-500/50' : 'text-red-400 ring-red-500/50'}`}
-                    >
-                      <option value="BUY">BUY</option>
-                      <option value="SELL">SELL</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-zinc-400 text-xs mb-1">Asset</label>
-                    <select 
-                      value={orderAsset} 
-                      onChange={(e) => setOrderAsset(e.target.value)}
-                      className="w-full bg-zinc-800 text-white border-none rounded px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500/50 outline-none"
-                    >
-                      {availableAssets.map(a => <option key={a} value={a}>{a}</option>)}
-                    </select>
-                  </div>
-                </div>
+      {/* Main Layout Grid */}
+      <main className="flex-1 grid grid-cols-12 gap-[1px] bg-zinc-800 overflow-hidden">
 
-                <div>
-                  <label className="block text-zinc-400 text-xs mb-1">Order Type</label>
-                  <div className="flex bg-zinc-800 rounded p-1">
-                    <button type="button" onClick={() => setOrderType('MARKET')} className={`flex-1 py-1 text-sm rounded transition-colors ${orderType === 'MARKET' ? 'bg-zinc-700 text-white' : 'text-zinc-400 hover:text-zinc-200'}`}>Market</button>
-                    <button type="button" onClick={() => setOrderType('LIMIT')} className={`flex-1 py-1 text-sm rounded transition-colors ${orderType === 'LIMIT' ? 'bg-zinc-700 text-white' : 'text-zinc-400 hover:text-zinc-200'}`}>Limit</button>
-                  </div>
-                </div>
+        {/* Left Column: Market Data (Asset selector) */}
+        <aside className="col-span-2 bg-zinc-950 flex flex-col h-full overflow-hidden">
+          <div className="p-3 border-b border-zinc-800 flex justify-between items-center bg-zinc-900 shrink-0">
+            <h2 className="text-sm font-bold text-zinc-100">Markets</h2>
+          </div>
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-1">
+            {availableAssets.map((asset) => {
+              const symbol = `${asset}USDT`;
+              const price = prices[symbol];
+              const isSelected = orderAsset === asset;
 
-                {orderType === 'LIMIT' && (
-                  <div>
-                    <label className="block text-zinc-400 text-xs mb-1">Limit Price (USDT)</label>
-                    <input 
-                      type="number" 
-                      step="any"
-                      value={orderPrice}
-                      onChange={(e) => setOrderPrice(e.target.value)}
-                      required
-                      className="w-full bg-zinc-800 text-white border-none rounded px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500/50 outline-none placeholder-zinc-600"
-                      placeholder={`Current: $${prices[`${orderAsset}USDT`] || 0}`}
-                    />
-                  </div>
-                )}
-
-                <div>
-                  <label className="block text-zinc-400 text-xs mb-1">Quantity ({orderAsset})</label>
-                  <input 
-                    type="number" 
-                    step="any"
-                    value={orderQuantity}
-                    onChange={(e) => setOrderQuantity(e.target.value)}
-                    required
-                    className="w-full bg-zinc-800 text-white border-none rounded px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500/50 outline-none placeholder-zinc-600"
-                    placeholder="0.00"
-                  />
-                </div>
-                
-                {orderQuantity && (
-                  <div className="text-right text-sm text-zinc-400">
-                    Est. Total: ~<span className="text-zinc-200">${((parseFloat(orderQuantity) || 0) * (orderType === 'MARKET' ? (prices[`${orderAsset}USDT`] || 0) : parseFloat(orderPrice || '0'))).toFixed(2)}</span>
-                  </div>
-                )}
-
-                <button 
-                  type="submit" 
-                  className={`w-full py-3 rounded font-bold uppercase tracking-wider text-sm transition-colors ${
-                    orderSide === 'BUY' 
-                      ? 'bg-green-600 hover:bg-green-500 text-green-50' 
-                      : 'bg-red-600 hover:bg-red-500 text-red-50'
+              return (
+                <button
+                  key={asset}
+                  onClick={() => setOrderAsset(asset)}
+                  className={`w-full text-left flex justify-between items-center p-2 rounded transition-all duration-200 group ${
+                    isSelected ? 'bg-zinc-800 border-l-2 border-blue-500' : 'hover:bg-zinc-900 border-l-2 border-transparent'
                   }`}
                 >
-                  {orderSide} {orderAsset}
+                  <div className="flex items-center gap-2">
+                    <span className={`font-bold text-sm ${isSelected ? 'text-white' : 'text-zinc-300 group-hover:text-white'}`}>{asset}</span>
+                    <span className="text-[10px] text-zinc-600">/USDT</span>
+                  </div>
+                  <span className={`font-mono text-xs ${price ? (isSelected ? 'text-green-400' : 'text-zinc-400') : 'text-zinc-600'}`}>
+                    {price ? `$${price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 6})}` : '...'}
+                  </span>
                 </button>
-             </form>
+              );
+            })}
+          </div>
+        </aside>
+
+        {/* Middle Column: Chart & Trading Form */}
+        <div className="col-span-7 flex flex-col h-full bg-zinc-950 overflow-hidden">
+          {/* Chart Section */}
+          <div className="flex-1 relative border-b border-zinc-800 min-h-[50%]">
+            <TradingChart symbol={`${orderAsset}USDT`} />
           </div>
 
-          {/* Portfolio */}
-          <div className="lg:col-span-1 bg-zinc-900 rounded-xl border border-zinc-800 p-6 shadow-lg overflow-y-auto max-h-[calc(100vh-160px)]">
-            <h2 className="text-xl font-bold mb-4 text-zinc-100 border-b border-zinc-800 pb-2">Portfolio</h2>
-            
-            {portfolio.length === 0 ? (
-              <div className="text-center py-8 text-zinc-500">
-                <p>No assets found.</p>
-                <p className="text-sm mt-1">Start trading to build your portfolio!</p>
+          {/* Trade Form Section */}
+          <div className="h-64 bg-zinc-900 shrink-0 flex flex-col">
+            <div className="px-4 py-2 border-b border-zinc-800 flex items-center justify-between">
+              <h2 className="text-sm font-bold text-zinc-100">Spot Trade</h2>
+              <div className="text-xs text-zinc-500">
+                Wallet Balance: <span className="font-mono text-zinc-300">{portfolio.find(p => p.asset === 'USDT')?.balance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) || '0.00'} USDT</span>
               </div>
-            ) : (
-              <div className="space-y-3">
-                {portfolio.map((item) => {
-                  const currentPrice = item.asset === 'USDT' ? 1 : (prices[`${item.asset}USDT`] || 0);
-                  const value = item.balance * currentPrice;
-                  
-                  return (
-                    <div key={item.asset} className="bg-zinc-800/50 p-4 rounded-lg border border-zinc-700/50">
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="font-bold text-lg text-white">{item.asset}</span>
-                        <span className="font-mono text-zinc-300">
-                          {item.balance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 8})}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-zinc-500">Value (USDT)</span>
-                        <span className="font-mono text-green-400">
-                          ${value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                        </span>
-                      </div>
+            </div>
+
+            <div className="flex-1 p-4 overflow-y-auto">
+              <form onSubmit={submitOrder} className="flex gap-6 max-w-3xl mx-auto">
+                {/* Buy Side */}
+                <div className="flex-1 flex flex-col gap-3">
+                  <div className="flex items-center justify-between bg-zinc-800/50 rounded p-1 border border-zinc-700/50">
+                    <button type="button" onClick={() => {setOrderSide('BUY'); setOrderType('LIMIT');}} className={`flex-1 py-1.5 text-xs font-medium rounded transition-colors ${orderSide === 'BUY' && orderType === 'LIMIT' ? 'bg-zinc-700 text-white' : 'text-zinc-400 hover:text-zinc-300'}`}>Limit</button>
+                    <button type="button" onClick={() => {setOrderSide('BUY'); setOrderType('MARKET');}} className={`flex-1 py-1.5 text-xs font-medium rounded transition-colors ${orderSide === 'BUY' && orderType === 'MARKET' ? 'bg-zinc-700 text-white' : 'text-zinc-400 hover:text-zinc-300'}`}>Market</button>
+                  </div>
+
+                  {orderType === 'LIMIT' ? (
+                    <div className="relative">
+                      <input
+                        type="number" step="any" required disabled={orderSide !== 'BUY'}
+                        value={orderSide === 'BUY' ? orderPrice : ''}
+                        onChange={(e) => setOrderPrice(e.target.value)}
+                        className="w-full bg-zinc-950 text-white border border-zinc-800 rounded px-3 py-2 text-sm focus:border-green-500 outline-none text-right pr-12 placeholder-zinc-700 transition-colors disabled:opacity-50"
+                        placeholder="Price"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-500 font-mono">USDT</span>
                     </div>
-                  );
-                })}
-              </div>
-            )}
+                  ) : (
+                    <div className="relative">
+                      <input
+                        type="text" disabled
+                        className="w-full bg-zinc-950/50 text-zinc-500 border border-zinc-800/50 rounded px-3 py-2 text-sm text-center italic cursor-not-allowed"
+                        placeholder="Market Price"
+                      />
+                    </div>
+                  )}
+
+                  <div className="relative">
+                    <input
+                      type="number" step="any" required disabled={orderSide !== 'BUY'}
+                      value={orderSide === 'BUY' ? orderQuantity : ''}
+                      onChange={(e) => setOrderQuantity(e.target.value)}
+                      className="w-full bg-zinc-950 text-white border border-zinc-800 rounded px-3 py-2 text-sm focus:border-green-500 outline-none text-right pr-12 placeholder-zinc-700 transition-colors disabled:opacity-50"
+                      placeholder="Amount"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-500 font-mono">{orderAsset}</span>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={orderSide !== 'BUY'}
+                    className={`w-full py-2.5 rounded font-bold tracking-wider text-sm transition-all duration-200 mt-auto ${
+                      orderSide === 'BUY'
+                        ? 'bg-green-600 hover:bg-green-500 text-white shadow-lg shadow-green-900/20'
+                        : 'bg-zinc-800 text-zinc-600 cursor-not-allowed border border-zinc-700/50'
+                    }`}
+                  >
+                    Buy {orderAsset}
+                  </button>
+                </div>
+
+                {/* Sell Side */}
+                <div className="flex-1 flex flex-col gap-3">
+                  <div className="flex items-center justify-between bg-zinc-800/50 rounded p-1 border border-zinc-700/50">
+                    <button type="button" onClick={() => {setOrderSide('SELL'); setOrderType('LIMIT');}} className={`flex-1 py-1.5 text-xs font-medium rounded transition-colors ${orderSide === 'SELL' && orderType === 'LIMIT' ? 'bg-zinc-700 text-white' : 'text-zinc-400 hover:text-zinc-300'}`}>Limit</button>
+                    <button type="button" onClick={() => {setOrderSide('SELL'); setOrderType('MARKET');}} className={`flex-1 py-1.5 text-xs font-medium rounded transition-colors ${orderSide === 'SELL' && orderType === 'MARKET' ? 'bg-zinc-700 text-white' : 'text-zinc-400 hover:text-zinc-300'}`}>Market</button>
+                  </div>
+
+                  {orderType === 'LIMIT' ? (
+                    <div className="relative">
+                      <input
+                        type="number" step="any" required disabled={orderSide !== 'SELL'}
+                        value={orderSide === 'SELL' ? orderPrice : ''}
+                        onChange={(e) => setOrderPrice(e.target.value)}
+                        className="w-full bg-zinc-950 text-white border border-zinc-800 rounded px-3 py-2 text-sm focus:border-red-500 outline-none text-right pr-12 placeholder-zinc-700 transition-colors disabled:opacity-50"
+                        placeholder="Price"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-500 font-mono">USDT</span>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <input
+                        type="text" disabled
+                        className="w-full bg-zinc-950/50 text-zinc-500 border border-zinc-800/50 rounded px-3 py-2 text-sm text-center italic cursor-not-allowed"
+                        placeholder="Market Price"
+                      />
+                    </div>
+                  )}
+
+                  <div className="relative">
+                    <input 
+                      type="number" step="any" required disabled={orderSide !== 'SELL'}
+                      value={orderSide === 'SELL' ? orderQuantity : ''}
+                      onChange={(e) => setOrderQuantity(e.target.value)}
+                      className="w-full bg-zinc-950 text-white border border-zinc-800 rounded px-3 py-2 text-sm focus:border-red-500 outline-none text-right pr-12 placeholder-zinc-700 transition-colors disabled:opacity-50"
+                      placeholder="Amount"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-500 font-mono">{orderAsset}</span>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={orderSide !== 'SELL'}
+                    className={`w-full py-2.5 rounded font-bold tracking-wider text-sm transition-all duration-200 mt-auto ${
+                      orderSide === 'SELL'
+                        ? 'bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-900/20'
+                        : 'bg-zinc-800 text-zinc-600 cursor-not-allowed border border-zinc-700/50'
+                    }`}
+                  >
+                    Sell {orderAsset}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column: Order Book & Portfolio */}
+        <div className="col-span-3 bg-zinc-950 flex flex-col h-full overflow-hidden">
+          {/* Order Book Section */}
+          <div className="flex-1 min-h-[50%] flex flex-col border-b border-zinc-800">
+             <OrderBookComponent symbol={`${orderAsset}USDT`} />
           </div>
 
+          {/* Portfolio Section */}
+          <div className="h-64 flex flex-col shrink-0 bg-zinc-950">
+            <div className="px-4 py-3 border-b border-zinc-800 flex justify-between items-center bg-zinc-900 shrink-0">
+              <h2 className="text-sm font-bold text-zinc-100">Assets</h2>
+              <span className="text-xs text-zinc-500 hover:text-blue-400 cursor-pointer transition-colors">Deposit</span>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-2">
+              {portfolio.length === 0 ? (
+                <div className="flex items-center justify-center h-full text-zinc-600 text-xs">
+                  No assets found.
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  {portfolio.map((item) => {
+                    if (item.balance <= 0) return null;
+                    const currentPrice = item.asset === 'USDT' ? 1 : (prices[`${item.asset}USDT`] || 0);
+                    const value = item.balance * currentPrice;
+
+                    return (
+                      <div key={item.asset} className="flex justify-between items-center p-2 hover:bg-zinc-900 rounded group transition-colors">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-sm text-zinc-200 group-hover:text-white transition-colors">{item.asset}</span>
+                        </div>
+                        <div className="text-right flex flex-col">
+                          <span className="font-mono text-xs text-zinc-300">
+                            {item.balance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 6})}
+                          </span>
+                          <span className="font-mono text-[10px] text-zinc-500">
+                            ≈ ${value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
-      </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="bg-zinc-950 border-t border-zinc-800 py-1.5 px-4 flex justify-between items-center shrink-0">
+        <div className="flex items-center gap-4 text-[10px] text-zinc-600 font-mono">
+          <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-green-500"></span> Operational</span>
+          <span>Latency: 12ms</span>
+        </div>
+        <div className="text-[10px] text-zinc-600">
+          N_Exchange Simulation Environment
+        </div>
+      </footer>
     </div>
   );
 };

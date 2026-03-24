@@ -1,9 +1,15 @@
 use dashmap::DashMap;
 use futures_util::StreamExt;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio_tungstenite::{connect_async, tungstenite::protocol::Message};
 use tracing::{error, info, warn};
+
+#[derive(Debug, Deserialize)]
+struct CombinedStreamMessage {
+    stream: String,
+    data: serde_json::Value,
+}
 
 #[derive(Debug, Deserialize)]
 struct BinanceTickerMessage {
@@ -13,24 +19,54 @@ struct BinanceTickerMessage {
     price: String,
 }
 
+#[derive(Debug, Deserialize)]
+struct BinanceDepthMessage {
+    #[serde(rename = "lastUpdateId")]
+    _last_update_id: u64,
+    bids: Vec<[String; 2]>,
+    asks: Vec<[String; 2]>,
+}
+
+#[derive(Debug, Serialize, Clone)]
+pub struct OrderBookEntry {
+    pub price: f64,
+    pub quantity: f64,
+}
+
+#[derive(Debug, Serialize, Clone, Default)]
+pub struct OrderBook {
+    pub bids: Vec<OrderBookEntry>,
+    pub asks: Vec<OrderBookEntry>,
+}
+
 pub struct MarketData {
     pub prices: Arc<DashMap<String, f64>>,
+    pub orderbooks: Arc<DashMap<String, OrderBook>>,
 }
 
 impl MarketData {
     pub fn new() -> Self {
         Self {
             prices: Arc::new(DashMap::new()),
+            orderbooks: Arc::new(DashMap::new()),
         }
     }
 
     pub async fn start_binance_websocket(&self) {
         let prices = self.prices.clone();
+        let orderbooks = self.orderbooks.clone();
+
+        let coins = ["btcusdt", "xrpusdt", "bnbusdt", "ethusdt", "solusdt", "polusdt", "xmrusdt", "zecusdt", "pepeusdt"];
         
-        // Binance specific stream. We use lowercase as required by binance wss
-        // Coins: BTC, XRP, BNB, ETH, SOL, POL, XMR, ZCASH, PEPE
-        let streams = "btcusdt@ticker/xrpusdt@ticker/bnbusdt@ticker/ethusdt@ticker/solusdt@ticker/polusdt@ticker/xmrusdt@ticker/zecusdt@ticker/pepeusdt@ticker";
-        let url = format!("wss://data-stream.binance.vision:9443/ws/{}", streams);
+        let mut streams = Vec::new();
+        for coin in coins.iter() {
+            streams.push(format!("{}@ticker", coin));
+            streams.push(format!("{}@depth20@100ms", coin));
+        }
+
+        let streams_str = streams.join("/");
+        // Use combined stream endpoint
+        let url = format!("wss://data-stream.binance.vision:9443/stream?streams={}", streams_str);
 
         tokio::spawn(async move {
             loop {
@@ -43,9 +79,40 @@ impl MarketData {
                         while let Some(msg) = read.next().await {
                             match msg {
                                 Ok(Message::Text(text)) => {
-                                    if let Ok(ticker) = serde_json::from_str::<BinanceTickerMessage>(&text) {
-                                        if let Ok(price) = ticker.price.parse::<f64>() {
-                                            prices.insert(ticker.symbol, price);
+                                    if let Ok(combined) = serde_json::from_str::<CombinedStreamMessage>(&text) {
+                                        if combined.stream.ends_with("@ticker") {
+                                            if let Ok(ticker) = serde_json::from_value::<BinanceTickerMessage>(combined.data) {
+                                                if let Ok(price) = ticker.price.parse::<f64>() {
+                                                    prices.insert(ticker.symbol, price);
+                                                }
+                                            }
+                                        } else if combined.stream.ends_with("@depth20@100ms") {
+                                            if let Ok(depth) = serde_json::from_value::<BinanceDepthMessage>(combined.data) {
+                                                // symbol is the stream name without the @depth suffix, converted to uppercase
+                                                let symbol = combined.stream.split('@').next().unwrap().to_uppercase();
+
+                                                let mut bids = Vec::new();
+                                                for bid in depth.bids {
+                                                    if let (Ok(price), Ok(quantity)) = (bid[0].parse::<f64>(), bid[1].parse::<f64>()) {
+                                                        bids.push(OrderBookEntry { price, quantity });
+                                                    }
+                                                }
+                                                let mut asks = Vec::new();
+                                                for ask in depth.asks {
+                                                    if let (Ok(price), Ok(quantity)) = (ask[0].parse::<f64>(), ask[1].parse::<f64>()) {
+                                                        asks.push(OrderBookEntry { price, quantity });
+                                                    }
+                                                }
+
+                                                orderbooks.insert(symbol, OrderBook { bids, asks });
+                                            }
+                                        }
+                                    } else {
+                                        // Some individual streams might not be wrapped? Fallback to original
+                                        if let Ok(ticker) = serde_json::from_str::<BinanceTickerMessage>(&text) {
+                                            if let Ok(price) = ticker.price.parse::<f64>() {
+                                                prices.insert(ticker.symbol, price);
+                                            }
                                         }
                                     }
                                 }
