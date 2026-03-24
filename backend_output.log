@@ -1,0 +1,71 @@
+warning: unused imports: `Order` and `User`
+ --> src/routes/api.rs:1:21
+  |
+1 | use crate::models::{Order, Portfolio, User};
+  |                     ^^^^^             ^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `StreamExt`
+ --> src/routes/ws.rs:9:29
+  |
+9 | use futures_util::{SinkExt, StreamExt};
+  |                             ^^^^^^^^^
+
+warning: unused import: `PgPool`
+ --> src/engine/mod.rs:3:12
+  |
+3 | use sqlx::{PgPool, Row};
+  |            ^^^^^^
+
+warning: unused import: `std::sync::Arc`
+ --> src/engine/mod.rs:4:5
+  |
+4 | use std::sync::Arc;
+  |     ^^^^^^^^^^^^^^
+
+warning: unused import: `SinkExt`
+ --> src/market/binance.rs:2:31
+  |
+2 | use futures_util::{StreamExt, SinkExt};
+  |                               ^^^^^^^
+
+warning: unused import: `SinkExt`
+ --> src/routes/ws.rs:9:20
+  |
+9 | use futures_util::{SinkExt, StreamExt};
+  |                    ^^^^^^^
+
+warning: unused import: `Row`
+ --> src/engine/mod.rs:3:20
+  |
+3 | use sqlx::{PgPool, Row};
+  |                    ^^^
+
+warning: struct `AppState` is never constructed
+ --> src/db/mod.rs:6:12
+  |
+6 | pub struct AppState {
+  |            ^^^^^^^^
+  |
+  = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: struct `User` is never constructed
+ --> src/models/mod.rs:6:12
+  |
+6 | pub struct User {
+  |            ^^^^
+
+warning: struct `TickerData` is never constructed
+  --> src/models/mod.rs:39:12
+   |
+39 | pub struct TickerData {
+   |            ^^^^^^^^^^
+
+warning: `backend` (bin "backend") generated 10 warnings (run `cargo fix --bin "backend" -p backend` to apply 5 suggestions)
+    Finished `release` profile [optimized] target(s) in 0.24s
+     Running `target/release/backend`
+
+thread 'main' (16075) panicked at src/db/mod.rs:17:10:
+Failed to create pool: Io(Custom { kind: Uncategorized, error: "failed to lookup address information: Name or service not known" })
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
