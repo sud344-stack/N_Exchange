@@ -19,6 +19,26 @@ pub async fn create_user(
     State(state): State<AppState>,
     Json(payload): Json<CreateUserPayload>,
 ) -> impl IntoResponse {
+    // First, check if the user already exists
+    let existing_user = sqlx::query(
+        r#"
+        SELECT id FROM users WHERE username = $1
+        "#,
+    )
+    .bind(&payload.username)
+    .fetch_optional(&*state.db) // fetch_optional doesn't need to strictly check schema at compile time
+    .await;
+
+    match existing_user {
+        Ok(Some(row)) => {
+            use sqlx::Row;
+            let user_id: Uuid = row.try_get("id").unwrap_or_else(|_| Uuid::nil());
+            return (StatusCode::OK, Json(serde_json::json!({ "id": user_id, "username": payload.username })));
+        }
+        Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({ "error": e.to_string() }))),
+        Ok(None) => {} // User does not exist, proceed to create
+    }
+
     let id = Uuid::new_v4();
 
     let result = sqlx::query(
