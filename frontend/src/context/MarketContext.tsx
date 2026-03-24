@@ -2,14 +2,28 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 
 type Prices = Record<string, number>;
 
-interface MarketContextType {
-  prices: Prices;
+export interface OrderBookEntry {
+  price: number;
+  quantity: number;
 }
 
-const MarketContext = createContext<MarketContextType>({ prices: {} });
+export interface OrderBook {
+  bids: OrderBookEntry[];
+  asks: OrderBookEntry[];
+}
+
+type OrderBooks = Record<string, OrderBook>;
+
+interface MarketContextType {
+  prices: Prices;
+  orderbooks: OrderBooks;
+}
+
+const MarketContext = createContext<MarketContextType>({ prices: {}, orderbooks: {} });
 
 const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [prices, setPrices] = useState<Prices>({});
+  const [orderbooks, setOrderbooks] = useState<OrderBooks>({});
 
   useEffect(() => {
     // Determine the correct WebSocket protocol (wss:// for https, ws:// for http)
@@ -27,6 +41,8 @@ const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ children }) =
           const message = JSON.parse(event.data);
           if (message.type === 'prices') {
             setPrices(message.data);
+          } else if (message.type === 'orderbooks') {
+            setOrderbooks(message.data);
           }
         } catch (error) {
           console.error('Error parsing market data:', error);
@@ -54,7 +70,7 @@ const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ children }) =
   }, []);
 
   return (
-    <MarketContext.Provider value={{ prices }}>
+    <MarketContext.Provider value={{ prices, orderbooks }}>
       {children}
     </MarketContext.Provider>
   );
