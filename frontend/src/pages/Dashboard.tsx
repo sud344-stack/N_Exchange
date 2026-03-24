@@ -47,8 +47,10 @@ export const Dashboard: React.FC = () => {
       const id = res.data.id;
       setUserId(id);
       localStorage.setItem('userId', id);
-    } catch (e) {
+    } catch (e: unknown) {
       console.error("Login failed", e);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      alert(`Login failed: ${((e as any).response?.data?.error) || (e as any).message}`);
     }
   };
 
